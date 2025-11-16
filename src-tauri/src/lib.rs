@@ -86,8 +86,9 @@ pub fn run() {
 
             // Setup system tray
             let show_item = MenuItem::with_id(app, "show", "Show Clipboard History", true, None::<&str>)?;
+            let check_update_item = MenuItem::with_id(app, "check_update", "Check for Updates", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+            let menu = Menu::with_items(app, &[&show_item, &check_update_item, &quit_item])?;
 
             let _tray = TrayIconBuilder::new()
                 .menu(&menu)
@@ -96,6 +97,14 @@ pub fn run() {
                     match event.id().as_ref() {
                         "show" => {
                             let _ = window::show_window(app);
+                        }
+                        "check_update" => {
+                            let app_handle = app.clone();
+                            tauri::async_runtime::spawn(async move {
+                                if let Err(e) = commands::check_for_updates_impl(&app_handle).await {
+                                    eprintln!("Update check failed: {}", e);
+                                }
+                            });
                         }
                         "quit" => {
                             app.exit(0);
@@ -128,6 +137,7 @@ pub fn run() {
             commands::open_accessibility_settings,
             commands::cleanup_old_entries,
             commands::hide_window_command,
+            commands::check_for_updates,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

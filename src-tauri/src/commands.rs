@@ -5,6 +5,7 @@ use anyhow::Result;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_updater::UpdaterExt;
 
 pub struct AppState {
     pub pool: Arc<SqlitePool>,
@@ -137,6 +138,122 @@ pub fn open_accessibility_settings() -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         // Windows doesn't require special permissions for keyboard simulation
+    }
+
+    Ok(())
+}
+
+/// Check for updates manually - can be called from menu
+#[tauri::command]
+pub async fn check_for_updates(app: AppHandle) -> Result<(), String> {
+    check_for_updates_impl(&app).await.map_err(|e| e.to_string())
+}
+
+/// Implementation of update check that can be called from both command and menu
+pub async fn check_for_updates_impl(app: &AppHandle) -> Result<()> {
+    use tauri::async_runtime::spawn;
+
+    println!("🔍 Checking for updates...");
+
+    let updater = app.updater_builder().build()?;
+
+    match updater.check().await {
+        Ok(Some(update)) => {
+            let version = update.version.clone();
+            let current_version = update.current_version.clone();
+            let body = update.body.clone().unwrap_or_else(|| "No release notes available".to_string());
+
+            println!("✅ Update available: {}", version);
+            println!("📝 Current version: {}", current_version);
+            println!("📄 Release notes: {}", body);
+
+            // Show confirmation dialog using rfd (native dialog)
+            let app_handle = app.clone();
+            spawn(async move {
+                use rfd::MessageButtons;
+                use rfd::MessageLevel;
+
+                let message = format!(
+                    "A new version {} is available (you have {}).\n\nThe update will be downloaded and installed. Would you like to continue?",
+                    version, current_version
+                );
+
+                let response = rfd::MessageDialog::new()
+                    .set_title("Update Available")
+                    .set_description(&message)
+                    .set_level(MessageLevel::Info)
+                    .set_buttons(MessageButtons::OkCancel)
+                    .show();
+
+                if response == rfd::MessageDialogResult::Ok {
+                    println!("🔄 User confirmed - Downloading and installing update...");
+                    let mut downloaded = 0;
+
+                    match update.download_and_install(
+                        |chunk_length, content_length| {
+                            downloaded += chunk_length;
+                            if let Some(total) = content_length {
+                                let progress = (downloaded as f64 / total as f64) * 100.0;
+                                if progress as i32 % 10 == 0 {
+                                    println!("📥 Download progress: {:.0}%", progress);
+                                }
+                            }
+                        },
+                        || {
+                            println!("✅ Download completed, installing...");
+                        }
+                    ).await {
+                        Ok(_) => {
+                            println!("🎉 Update installed successfully!");
+
+                            rfd::MessageDialog::new()
+                                .set_title("Update Installed")
+                                .set_description("Update installed successfully! Please restart the application to use the new version.")
+                                .set_level(MessageLevel::Info)
+                                .set_buttons(MessageButtons::Ok)
+                                .show();
+                        }
+                        Err(e) => {
+                            eprintln!("❌ Installation failed: {}", e);
+
+                            rfd::MessageDialog::new()
+                                .set_title("Update Failed")
+                                .set_description(&format!("Failed to install update: {}", e))
+                                .set_level(MessageLevel::Error)
+                                .set_buttons(MessageButtons::Ok)
+                                .show();
+                        }
+                    }
+                } else {
+                    println!("❌ User cancelled update");
+                }
+            });
+        }
+        Ok(None) => {
+            println!("✅ No updates available - already on latest version");
+
+            // Show info message using rfd
+            rfd::MessageDialog::new()
+                .set_title("No Updates")
+                .set_description("You are already running the latest version.")
+                .set_level(rfd::MessageLevel::Info)
+                .set_buttons(rfd::MessageButtons::Ok)
+                .show();
+        }
+        Err(e) => {
+            eprintln!("❌ Update check failed: {}", e);
+
+            // Show error message using rfd
+            let error_msg = format!("Failed to check for updates: {}", e);
+            rfd::MessageDialog::new()
+                .set_title("Update Check Failed")
+                .set_description(&error_msg)
+                .set_level(rfd::MessageLevel::Error)
+                .set_buttons(rfd::MessageButtons::Ok)
+                .show();
+
+            return Err(e.into());
+        }
     }
 
     Ok(())
