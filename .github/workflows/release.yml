@@ -35,37 +35,11 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      # Windows-specific: Install sccache for faster compilation
-      - name: Install sccache (Windows)
-        if: matrix.platform == 'windows-latest'
-        run: |
-          choco install sccache -y
-          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-          echo "SCCACHE_DIR=${{ runner.temp }}\sccache" >> $GITHUB_ENV
-
-      # Cache Rust dependencies
+      # Cache Rust dependencies with rust-cache
       - name: Cache Rust dependencies
-        uses: actions/cache@v4
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            src-tauri/target/
-          key: ${{ matrix.platform }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.platform }}-cargo-
-
-      # Cache sccache (Windows only)
-      - name: Cache sccache (Windows)
-        if: matrix.platform == 'windows-latest'
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}\sccache
-          key: ${{ matrix.platform }}-sccache-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.platform }}-sccache-
+          workspaces: './src-tauri -> target'
 
       # Cache Bun dependencies
       - name: Cache Bun dependencies
@@ -81,12 +55,6 @@ jobs:
       - name: Install frontend dependencies
         run: bun install
 
-      # Windows optimization: Use parallel compilation
-      - name: Set Rust build flags (Windows)
-        if: matrix.platform == 'windows-latest'
-        run: |
-          echo "CARGO_BUILD_JOBS=4" >> $GITHUB_ENV
-
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -100,8 +68,3 @@ jobs:
           releaseBody: 'See CHANGELOG.md for details'
           releaseDraft: false
           prerelease: false
-
-      # Show sccache stats (Windows only)
-      - name: Show sccache stats (Windows)
-        if: matrix.platform == 'windows-latest'
-        run: sccache --show-stats
