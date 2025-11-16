@@ -2,6 +2,11 @@
 
 All notable changes to SuperKBD will be documented in this file.
 
+## [0.1.5] - 2025-11-16
+
+### Fixed
+- Fixed shell syntax error in release workflow
+
 ## [0.1.4] - 2025-11-16
 
 ### Fixed
