@@ -6,27 +6,33 @@ use std::sync::Mutex;
 static PREVIOUS_APP: Mutex<Option<String>> = Mutex::new(None);
 
 pub fn show_window(app: &AppHandle) -> Result<()> {
+    show_window_internal(app, true)
+}
+
+fn show_window_internal(app: &AppHandle, capture_previous_app: bool) -> Result<()> {
     // Before showing SuperKBD, get the currently frontmost application's bundle ID
     #[cfg(target_os = "macos")]
     {
-        use std::process::Command;
+        if capture_previous_app {
+            use std::process::Command;
 
-        println!("🔧 [DEBUG] Getting frontmost app before showing SuperKBD...");
-        let result = Command::new("osascript")
-            .arg("-e")
-            .arg(r#"tell application "System Events"
+            println!("🔧 [DEBUG] Getting frontmost app before showing SuperKBD...");
+            let result = Command::new("osascript")
+                .arg("-e")
+                .arg(r#"tell application "System Events"
     set frontApp to first application process whose frontmost is true
     return bundle identifier of frontApp
 end tell"#)
-            .output();
+                .output();
 
-        if let Ok(output) = result {
-            if output.status.success() {
-                let bundle_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !bundle_id.is_empty() && bundle_id != "com.so2liu.superkbd" {
-                    println!("🔧 [DEBUG] Storing previous app bundle ID: {}", bundle_id);
-                    if let Ok(mut prev) = PREVIOUS_APP.lock() {
-                        *prev = Some(bundle_id);
+            if let Ok(output) = result {
+                if output.status.success() {
+                    let bundle_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    if !bundle_id.is_empty() && bundle_id != "com.so2liu.superkbd" {
+                        println!("🔧 [DEBUG] Storing previous app bundle ID: {}", bundle_id);
+                        if let Ok(mut prev) = PREVIOUS_APP.lock() {
+                            *prev = Some(bundle_id);
+                        }
                     }
                 }
             }
@@ -102,7 +108,9 @@ pub fn toggle_window(app: &AppHandle) -> Result<()> {
             println!("🔧 [DEBUG] Window is visible - hiding");
             hide_window(app)?;
         } else {
-            println!("🔧 [DEBUG] Window is hidden - showing");
+            println!("🔧 [DEBUG] Window is hidden - showing and capturing previous app");
+            // When showing via toggle, we need to capture the current app
+            // because the user is switching FROM that app TO superkbd
             show_window(app)?;
         }
     }
