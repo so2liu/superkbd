@@ -2,6 +2,29 @@
 
 This guide explains how to set up the GitHub repository for automated builds and releases with auto-update support.
 
+## Branching Strategy
+
+**Main branches:**
+- `develop` (default) - Daily development and integration
+- `main` - Production-ready code, always stable
+
+**Workflow:**
+1. **Daily development** → Push to `develop` branch
+   - Triggers: Tests only (fast feedback, ~2-3 minutes)
+   - No builds created
+
+2. **Merge to main** → Create PR from `develop` to `main`
+   - Triggers: Tests + Build (verification, ~10-15 minutes)
+   - Builds artifacts but doesn't create release
+
+3. **Create release** → Push tag (e.g., `v0.1.0`) on `main` branch
+   - Triggers: Tests + Build + Release (complete flow, ~10-15 minutes)
+   - Creates signed release with installers
+
+**Supported platforms:**
+- macOS ARM (Apple Silicon) - Primary platform
+- Windows x64 - Secondary platform
+
 ## Prerequisites
 
 - GitHub account with access to the repository
@@ -34,28 +57,54 @@ This is the password used when generating the signing key.
 
 ## Release Process
 
-The GitHub Actions workflow is triggered in two ways:
+### Step-by-Step Release Guide
 
-### 1. Tag-based Release (Recommended)
+1. **Develop on develop branch**
+   ```bash
+   git checkout develop
+   # Make changes
+   git add .
+   git commit -m "feat: add new feature"
+   git push origin develop
+   ```
+   - Tests run automatically
+   - No builds created (fast feedback)
 
-Create and push a version tag:
+2. **Merge to main for verification**
+   ```bash
+   # Create PR from develop to main on GitHub
+   # Or merge locally:
+   git checkout main
+   git merge develop
+   git push origin main
+   ```
+   - Tests + builds run automatically
+   - Artifacts saved for 7 days (testing only)
+   - No release created yet
 
-```bash
-# Update version in package.json and tauri.conf.json
-# Then create a tag
-git tag v0.1.0
-git push origin v0.1.0
-```
+3. **Create release (tag-based)**
+   ```bash
+   # On main branch, update version in package.json and tauri.conf.json
+   # Commit the version bump
+   git add package.json src-tauri/tauri.conf.json
+   git commit -m "chore: bump version to 0.1.0"
+   git push origin main
 
-This will automatically:
-1. Build the app for macOS (Intel + Apple Silicon) and Windows
-2. Create a GitHub release
-3. Upload signed installers
-4. Generate update manifests for auto-update
+   # Create and push tag
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
 
-### 2. Manual Workflow Dispatch
+   This will automatically:
+   - Build the app for macOS ARM and Windows x64
+   - Create a GitHub release (draft initially)
+   - Upload signed installers
+   - Generate update manifests for auto-update
+   - Publish the release
 
-Go to **Actions > Release > Run workflow** to manually trigger a build.
+### Alternative: Manual Workflow Dispatch
+
+Go to **Actions > Release > Run workflow** to manually trigger a release build.
 
 ## How Auto-Update Works
 
