@@ -134,3 +134,110 @@ This helped identify that AppleScript was the bottleneck (112ms out of 149ms tot
 2. **Use platform-specific APIs for performance**: CGEvent on macOS is much faster than cross-platform solutions
 3. **Prefer `.spawn()` over `.output()`**: When you don't need to wait for command completion
 4. **Test edge cases**: Multiple windows of same app, different target apps, etc.
+
+## CI/CD and Deployment
+
+### GitHub Actions Setup
+
+The project uses GitHub Actions for automated builds and releases:
+
+**Workflow file**: `.github/workflows/release.yml`
+
+**Trigger**: Push tags matching `v*` pattern (e.g., `v0.1.0`)
+
+**Platforms**:
+- macOS (Apple Silicon and Intel)
+- Windows (x64)
+
+### Release Process
+
+1. Update version in `package.json` and `tauri.conf.json`
+2. Commit changes
+3. Create and push a tag:
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+4. GitHub Actions automatically:
+   - Builds for all platforms
+   - Signs the releases
+   - Creates GitHub release
+   - Uploads installers and update manifests
+
+### Auto-Update System
+
+**How it works**:
+1. App checks endpoint on startup: `https://github.com/so2liu/superkbd/releases/latest/download/latest.json`
+2. Compares current version with latest available
+3. Shows update dialog if newer version exists
+4. Downloads and verifies update signature
+5. Installs and restarts automatically
+
+**Security**:
+- Updates are signed with private key (stored in GitHub secrets)
+- App verifies signature with embedded public key
+- Only validated updates can be installed
+
+**Configuration**:
+```json
+{
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": ["https://github.com/so2liu/superkbd/releases/latest/download/latest.json"],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJCQkEwNDhCNENEN0M2ODYKUldTR3h0ZE1pd1M2dXo2NzJSNSswbU8yOXpqMVZoZ3BiYStSbSt1Wk9CTnVzcG50eVJjcDhHYWwK"
+    }
+  }
+}
+```
+
+### GitHub Secrets Required
+
+Set these in repository settings (Settings > Secrets and variables > Actions):
+
+1. **TAURI_SIGNING_PRIVATE_KEY**: Content of `~/.tauri/superkbd.key`
+2. **TAURI_SIGNING_PRIVATE_KEY_PASSWORD**: Password used when generating key
+
+**Generating new keys** (if needed):
+```bash
+bunx tauri signer generate --password "your-password" -w ~/.tauri/superkbd.key
+```
+
+### Build Artifacts
+
+Each release produces:
+
+**macOS**:
+- `SuperKBD_x.y.z_aarch64.dmg` - Apple Silicon installer
+- `SuperKBD_x.y.z_x64.dmg` - Intel installer
+- `.tar.gz` files - For auto-update
+
+**Windows**:
+- `SuperKBD_x.y.z_x64-setup.exe` - Installer
+- `.nsis.zip` files - For auto-update
+
+### Repository Structure
+
+- **Private repository**: Code remains confidential
+- **Public releases**: Users can download installers without repo access
+- **Auto-update**: Works from public GitHub releases
+
+### Troubleshooting Releases
+
+**Build fails with signing error**:
+- Verify GitHub secrets are set correctly
+- Check private key format (should include header/footer)
+- Ensure password matches the one used during key generation
+
+**Auto-update not working**:
+- Verify `endpoints` URL in `tauri.conf.json` is correct
+- Check release is published (not draft)
+- Ensure `latest.json` exists in release assets
+
+**Platform-specific build fails**:
+- Check workflow logs for detailed error messages
+- macOS builds require valid app identifiers
+- Windows builds need NSIS installer properly configured
+
+For detailed setup instructions, see `.github/SETUP.md`
