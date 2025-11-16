@@ -96,6 +96,19 @@ pub fn get_previous_app() -> Option<String> {
     }
 }
 
+pub fn toggle_window(app: &AppHandle) -> Result<()> {
+    if let Some(window) = app.get_webview_window("main") {
+        if window.is_visible()? {
+            println!("🔧 [DEBUG] Window is visible - hiding");
+            hide_window(app)?;
+        } else {
+            println!("🔧 [DEBUG] Window is hidden - showing");
+            show_window(app)?;
+        }
+    }
+    Ok(())
+}
+
 pub fn setup_window_events(window: &WebviewWindow) {
     let window_clone = window.clone();
     window.on_window_event(move |event| {

@@ -70,8 +70,8 @@ pub fn run() {
                 tauri_plugin_global_shortcut::Builder::new()
                     .with_handler(move |_app, shortcut, _event| {
                         if shortcut == &alt_i_shortcut {
-                            println!("Alt+I pressed - showing window");
-                            let _ = window::show_window(&app_handle_for_shortcut);
+                            println!("Alt+I pressed - toggling window");
+                            let _ = window::toggle_window(&app_handle_for_shortcut);
                         }
                     })
                     .build(),

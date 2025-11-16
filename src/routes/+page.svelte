@@ -1,9 +1,17 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { invoke } from '@tauri-apps/api/core';
   import SearchInput from '$lib/components/SearchInput.svelte';
   import HistoryList from '$lib/components/HistoryList.svelte';
   import PermissionDialog from '$lib/components/PermissionDialog.svelte';
   import { loadHistory, initializeListeners } from '$lib/stores/clipboard';
+
+  // Handle Esc key to hide window
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      invoke('hide_window_command').catch(console.error);
+    }
+  }
 
   onMount(async () => {
     // Initialize event listeners
@@ -15,6 +23,8 @@
     // Global shortcut (Alt+I) is registered in Rust - see src-tauri/src/lib.rs
   });
 </script>
+
+<svelte:window onkeydown={handleKeydown} />
 
 <div class="app">
   <SearchInput />
