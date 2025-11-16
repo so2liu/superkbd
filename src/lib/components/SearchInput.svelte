@@ -54,6 +54,7 @@
     outline: none;
     transition: border-color 0.2s;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-sizing: border-box;
   }
 
   .search-input:focus {
