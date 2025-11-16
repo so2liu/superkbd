@@ -1,9 +1,13 @@
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 use anyhow::Result;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 // Store the previously active application name
 static PREVIOUS_APP: Mutex<Option<String>> = Mutex::new(None);
+
+// Prevent rapid toggling
+static IS_TOGGLING: AtomicBool = AtomicBool::new(false);
 
 pub fn show_window(app: &AppHandle) -> Result<()> {
     show_window_internal(app, true)
@@ -55,6 +59,9 @@ pub fn hide_window(app: &AppHandle) -> Result<()> {
         // First hide the window
         window.hide()?;
 
+        // Small delay to ensure window is actually hidden before switching apps
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
         // On macOS, activate the previously stored application using bundle ID
         #[cfg(target_os = "macos")]
         {
@@ -103,6 +110,12 @@ pub fn get_previous_app() -> Option<String> {
 }
 
 pub fn toggle_window(app: &AppHandle) -> Result<()> {
+    // Check if already toggling - prevent rapid successive toggles
+    if IS_TOGGLING.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst).is_err() {
+        println!("⚠️  [DEBUG] Toggle already in progress - ignoring");
+        return Ok(());
+    }
+
     if let Some(window) = app.get_webview_window("main") {
         if window.is_visible()? {
             println!("🔧 [DEBUG] Window is visible - hiding");
@@ -114,6 +127,13 @@ pub fn toggle_window(app: &AppHandle) -> Result<()> {
             show_window(app)?;
         }
     }
+
+    // Release the lock after a short delay to allow window state to stabilize
+    std::thread::spawn(|| {
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        IS_TOGGLING.store(false, Ordering::SeqCst);
+    });
+
     Ok(())
 }
 
