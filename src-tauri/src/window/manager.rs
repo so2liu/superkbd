@@ -6,7 +6,7 @@ use std::sync::Mutex;
 static PREVIOUS_APP: Mutex<Option<String>> = Mutex::new(None);
 
 pub fn show_window(app: &AppHandle) -> Result<()> {
-    // Before showing SuperKBD, get the currently frontmost application
+    // Before showing SuperKBD, get the currently frontmost application's bundle ID
     #[cfg(target_os = "macos")]
     {
         use std::process::Command;
@@ -16,17 +16,17 @@ pub fn show_window(app: &AppHandle) -> Result<()> {
             .arg("-e")
             .arg(r#"tell application "System Events"
     set frontApp to first application process whose frontmost is true
-    return name of frontApp
+    return bundle identifier of frontApp
 end tell"#)
             .output();
 
         if let Ok(output) = result {
             if output.status.success() {
-                let app_name = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !app_name.is_empty() && app_name != "SuperKBD" && app_name != "superkbd" {
-                    println!("🔧 [DEBUG] Storing previous app: {}", app_name);
+                let bundle_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !bundle_id.is_empty() && bundle_id != "com.so2liu.superkbd" {
+                    println!("🔧 [DEBUG] Storing previous app bundle ID: {}", bundle_id);
                     if let Ok(mut prev) = PREVIOUS_APP.lock() {
-                        *prev = Some(app_name);
+                        *prev = Some(bundle_id);
                     }
                 }
             }
@@ -49,36 +49,36 @@ pub fn hide_window(app: &AppHandle) -> Result<()> {
         // First hide the window
         window.hide()?;
 
-        // On macOS, activate the previously stored application
+        // On macOS, activate the previously stored application using bundle ID
         #[cfg(target_os = "macos")]
         {
             use std::process::Command;
 
-            // Get the stored previous app name
-            let previous_app = if let Ok(prev) = PREVIOUS_APP.lock() {
+            // Get the stored previous app bundle ID
+            let previous_bundle_id = if let Ok(prev) = PREVIOUS_APP.lock() {
                 prev.clone()
             } else {
                 None
             };
 
-            if let Some(app_name) = previous_app {
-                if !app_name.is_empty() {
-                    println!("🔧 [DEBUG] Activating stored previous app: {}", app_name);
-                    let activate_script = format!(r#"tell application "{}" to activate"#, app_name);
-                    let result = Command::new("osascript")
-                        .arg("-e")
-                        .arg(&activate_script)
+            if let Some(bundle_id) = previous_bundle_id {
+                if !bundle_id.is_empty() {
+                    println!("🔧 [DEBUG] Activating app with bundle ID: {}", bundle_id);
+                    // Use 'open -b' to open by bundle identifier - more reliable than app name
+                    let result = Command::new("open")
+                        .arg("-b")
+                        .arg(&bundle_id)
                         .output();
 
                     if let Ok(output) = result {
                         if output.status.success() {
-                            println!("✅ [DEBUG] Successfully activated: {}", app_name);
+                            println!("✅ [DEBUG] Successfully activated bundle: {}", bundle_id);
                         } else {
-                            eprintln!("❌ [ERROR] Failed to activate {}: {}", app_name, String::from_utf8_lossy(&output.stderr));
+                            eprintln!("❌ [ERROR] Failed to activate {}: {}", bundle_id, String::from_utf8_lossy(&output.stderr));
                         }
                     }
                 } else {
-                    println!("⚠️  [WARNING] Previous app name is empty");
+                    println!("⚠️  [WARNING] Previous app bundle ID is empty");
                 }
             } else {
                 println!("⚠️  [WARNING] No previous app stored");

@@ -62,20 +62,45 @@ pub async fn paste_and_close(
     println!("\n⏱️  [PERF] ========== PASTE START ==========");
     println!("🚀 [PERF] T+0ms: paste_and_close called");
 
-    // Get the target app name before hiding
-    let target_app = window::get_previous_app();
-    println!("🔧 [PERF] T+{}ms: Got target app: {:?}", start.elapsed().as_millis(), target_app);
+    // Hide window and activate previous app using window manager
+    // This handles app switching correctly using AppleScript
+    window::hide_window(&app).map_err(|e| e.to_string())?;
+    println!("🔧 [PERF] T+{}ms: Window hidden and app switched", start.elapsed().as_millis());
 
-    // Hide window
-    if let Some(window) = app.get_webview_window("main") {
-        window.hide().map_err(|e| e.to_string())?;
+    // Small delay to ensure app has focus
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    println!("🔧 [PERF] T+{}ms: After focus delay", start.elapsed().as_millis());
+
+    // Copy to clipboard
+    let mut clipboard = arboard::Clipboard::new()
+        .map_err(|e| format!("Failed to access clipboard: {}", e))?;
+    clipboard.set_text(content)
+        .map_err(|e| format!("Failed to set clipboard: {}", e))?;
+    println!("🔧 [PERF] T+{}ms: Content copied to clipboard", start.elapsed().as_millis());
+
+    // Simulate paste
+    #[cfg(target_os = "macos")]
+    {
+        use core_graphics::event::{CGEvent, CGEventFlags, CGEventTapLocation, CGKeyCode};
+        use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
+
+        let source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
+            .map_err(|_| "Failed to create event source".to_string())?;
+
+        const V_KEYCODE: CGKeyCode = 9;
+
+        let key_down = CGEvent::new_keyboard_event(source.clone(), V_KEYCODE, true)
+            .map_err(|_| "Failed to create key down event".to_string())?;
+        key_down.set_flags(CGEventFlags::CGEventFlagCommand);
+
+        let key_up = CGEvent::new_keyboard_event(source.clone(), V_KEYCODE, false)
+            .map_err(|_| "Failed to create key up event".to_string())?;
+        key_up.set_flags(CGEventFlags::CGEventFlagCommand);
+
+        key_down.post(CGEventTapLocation::HID);
+        key_up.post(CGEventTapLocation::HID);
+        println!("🔧 [PERF] T+{}ms: Cmd+V sent", start.elapsed().as_millis());
     }
-    println!("🔧 [PERF] T+{}ms: Window hidden", start.elapsed().as_millis());
-
-    // Immediately paste - don't wait for natural focus switch
-    paste::simulate_paste_with_app_switch(content, target_app, start)
-        .await
-        .map_err(|e| e.to_string())?;
 
     println!("✅ [PERF] T+{}ms: ========== PASTE COMPLETE ==========\n", start.elapsed().as_millis());
     Ok(())
