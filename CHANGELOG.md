@@ -2,6 +2,18 @@
 
 All notable changes to SuperKBD will be documented in this file.
 
+## [0.1.3] - 2025-11-16
+
+### Changed
+- Migrated releases to public repository (superkbd-releases)
+- Added build caching for faster CI/CD (Rust cargo + Bun dependencies)
+- Updated updater endpoint to point to public releases repo
+
+### Technical
+- Source code remains private, releases are now public
+- Build time reduced by ~50% with dependency caching
+- Following kb-example pattern for private code + public artifacts
+
 ## [0.1.2] - 2025-11-16
 
 ### Fixed
