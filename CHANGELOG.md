@@ -2,6 +2,20 @@
 
 All notable changes to SuperKBD will be documented in this file.
 
+## [0.1.6] - 2025-11-16
+
+### Changed
+- **Open source**: Repository is now public
+- **Simplified CI/CD**: Single-repository architecture (no separate releases repo)
+- **Windows build optimization**: Added sccache for ~50% faster Rust compilation
+- **Updater endpoint**: Now points to main repository releases
+
+### Technical
+- Added sccache caching for Windows builds
+- Set CARGO_BUILD_JOBS=4 for parallel compilation
+- Removed cross-repository publishing logic
+- Simplified release workflow to use tauri-action directly
+
 ## [0.1.5] - 2025-11-16
 
 ### Fixed
