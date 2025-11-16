@@ -39,6 +39,17 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "so2liu"
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/so2liu/superkbd/releases/latest/download/latest.json"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJCQkEwNDhCNENEN0M2ODYKUldTR3h0ZE1pd1M2dXo2NzJSNSswbU8yOXpqMVZoZ3BiYStSbSt1Wk9CTnVzcG50eVJjcDhHYWwK"
+    }
   }
 }
