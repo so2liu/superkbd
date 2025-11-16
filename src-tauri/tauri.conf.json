@@ -12,9 +12,18 @@
   "app": {
     "windows": [
       {
-        "title": "superkbd",
-        "width": 800,
-        "height": 600
+        "title": "SuperKBD",
+        "label": "main",
+        "width": 600,
+        "height": 450,
+        "center": true,
+        "decorations": true,
+        "transparent": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": true,
+        "resizable": false,
+        "focus": true
       }
     ],
     "security": {
