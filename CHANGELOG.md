@@ -2,6 +2,11 @@
 
 All notable changes to SuperKBD will be documented in this file.
 
+## [0.1.2] - 2025-11-16
+
+### Fixed
+- Auto-updater configuration: Added `createUpdaterArtifacts` to properly generate update manifests
+
 ## [0.1.1] - 2025-11-16
 
 ### Added
