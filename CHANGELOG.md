@@ -2,6 +2,16 @@
 
 All notable changes to SuperKBD will be documented in this file.
 
+## [0.1.4] - 2025-11-16
+
+### Fixed
+- Eliminated GitHub Actions artifact storage dependency to avoid quota issues
+- Build jobs now upload directly to public releases repository
+
+### Technical
+- Workflow rewritten: create-release job runs first, build jobs upload to existing release
+- No intermediate artifact storage required
+
 ## [0.1.3] - 2025-11-16
 
 ### Changed
