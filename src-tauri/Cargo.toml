@@ -40,3 +40,14 @@ tempfile = "3"
 mockall = "0.12"
 serial_test = "3"
 
+# Build profiles optimized for compilation speed
+[profile.dev]
+incremental = true
+opt-level = 0
+
+[profile.release]
+# Balance between compilation speed and runtime performance
+codegen-units = 16  # More units = faster parallel compilation
+lto = "thin"        # Thin LTO is much faster than full LTO
+opt-level = "z"     # Optimize for size (faster to compile than -O3)
+strip = true        # Strip symbols to reduce binary size

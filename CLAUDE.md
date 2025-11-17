@@ -223,6 +223,34 @@ Each release produces:
 - **Public releases**: Users can download installers without repo access
 - **Auto-update**: Works from public GitHub releases
 
+### Build Performance Optimizations
+
+The project includes several optimizations to speed up CI/CD builds, especially for Windows:
+
+**1. Rust Compilation Cache**
+- Uses `Swatinem/rust-cache@v2` to cache Rust dependencies and build artifacts
+- Significantly reduces rebuild times (first build ~10-15 min, cached builds ~3-5 min)
+- Cache is shared across workflow runs for the same branch
+
+**2. Cargo Build Configuration** (`.cargo/config.toml`)
+- `jobs = 0`: Uses all available CPU cores for parallel compilation
+- Windows-specific target configuration for optimal compilation
+
+**3. Release Profile Optimization** (`src-tauri/Cargo.toml`)
+- `codegen-units = 16`: More units = faster parallel compilation
+- `lto = "thin"`: Thin LTO provides good optimization with faster compile times than full LTO
+- `opt-level = "z"`: Size optimization is faster to compile than `-O3` while producing smaller binaries
+- `strip = true`: Removes debug symbols to reduce binary size
+
+**Expected build times**:
+- First build (no cache): 10-15 minutes per platform
+- Subsequent builds (cached): 3-5 minutes per platform
+- The Rust cache persists for 7 days of inactivity
+
+**Cache invalidation**:
+- Cache automatically refreshes when `Cargo.lock` changes
+- Manual cache clearing: Delete caches in Actions > Caches
+
 ### Troubleshooting Releases
 
 **Build fails with signing error**:
