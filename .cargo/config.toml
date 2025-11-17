@@ -1,9 +1,5 @@
 # Cargo build configuration for optimized compilation speed
 
-[build]
-# Increase parallelism - use all available CPU cores
-jobs = 0  # 0 = use all cores
-
 [target.x86_64-pc-windows-msvc]
 # Windows-specific optimizations
 rustflags = [
