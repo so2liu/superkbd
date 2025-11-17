@@ -1,0 +1,87 @@
+name: Build Performance Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to test (macos-latest or windows-latest)'
+        required: true
+        default: 'windows-latest'
+        type: choice
+        options:
+          - windows-latest
+          - macos-latest
+
+jobs:
+  build-test:
+    runs-on: ${{ inputs.platform }}
+
+    steps:
+      - name: Start timer
+        run: echo "BUILD_START=$(date +%s)" >> $GITHUB_ENV
+        shell: bash
+
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ inputs.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          cache-on-failure: true
+
+      - name: Install dependencies (Ubuntu)
+        if: inputs.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: |
+          echo "⏱️  Installing frontend deps at: $(($(date +%s) - BUILD_START))s"
+          bun install
+        shell: bash
+
+      - name: Build (Windows)
+        if: inputs.platform == 'windows-latest'
+        shell: bash
+        run: |
+          echo "⏱️  Starting Rust build at: $(($(date +%s) - BUILD_START))s"
+          cd src-tauri
+          cargo build --release
+          echo "⏱️  Rust build completed at: $(($(date +%s) - BUILD_START))s"
+
+      - name: Build (macOS)
+        if: inputs.platform == 'macos-latest'
+        shell: bash
+        run: |
+          echo "⏱️  Starting Rust build at: $(($(date +%s) - BUILD_START))s"
+          cd src-tauri
+          cargo build --release --target aarch64-apple-darwin
+          echo "⏱️  Rust build completed at: $(($(date +%s) - BUILD_START))s"
+
+      - name: Build frontend
+        shell: bash
+        run: |
+          echo "⏱️  Starting frontend build at: $(($(date +%s) - BUILD_START))s"
+          bun run build
+          echo "⏱️  Frontend build completed at: $(($(date +%s) - BUILD_START))s"
+
+      - name: Final timing
+        shell: bash
+        run: |
+          TOTAL_TIME=$(($(date +%s) - BUILD_START))
+          echo "🎉 Total build time: ${TOTAL_TIME}s ($(($TOTAL_TIME / 60))m $(($TOTAL_TIME % 60))s)"
+          echo "### Build Performance Report" >> $GITHUB_STEP_SUMMARY
+          echo "- Platform: ${{ inputs.platform }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Total time: ${TOTAL_TIME}s ($(($TOTAL_TIME / 60))m $(($TOTAL_TIME % 60))s)" >> $GITHUB_STEP_SUMMARY
+          echo "- Cache status: Check 'Rust cache' step" >> $GITHUB_STEP_SUMMARY
